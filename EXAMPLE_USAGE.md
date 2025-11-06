@@ -210,11 +210,15 @@ with requests.Session() as sess:
     command = resolve_command(sess, base_url, "debug")
     # select wrapper 70 (session-level)
     report = launch_container(sess, base_url, 70, "xnat:imageSessionData", "session", target_session_id, inputs)
+
+# Optional helpers:
+#   python3 examples/example6_remote_debug.py --list-containers
+#   python3 examples/example6_remote_debug.py --sample-from-id <container_id>
 ```
 
 Omit `--submit` to preview the launch UI without starting a container.
 
----
+--- 
 
 ## Example 7: Remote dcm2niix Batch (Python)
 

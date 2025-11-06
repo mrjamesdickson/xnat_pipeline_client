@@ -13,3 +13,7 @@ The shell and Python snippets in `EXAMPLE_USAGE.md` now live here as runnable sc
 All scripts accept an optional first argument pointing at the parent directory where run manifests should be written. By default they use `./demo_runs/`.
 
 For the Python examples that call the remote XNAT service, activate the repo virtualenv first (e.g. `source venv/bin/activate`) or invoke them via `venv/bin/python`.
+
+`example6_remote_debug.py` also includes helper flags:
+- `--list-containers` (with `--containers-limit`) to show recent container IDs/status.
+- `--sample-from-id <id>` to print a ready-to-edit Python snippet that relaunches a given container via `Executor`.
