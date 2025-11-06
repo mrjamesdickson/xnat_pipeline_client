@@ -170,7 +170,10 @@ with xnat.connect("https://xnat.example.org", token="your-token") as xn:
 
 Use the demo server at `http://demo02.xnatworks.io` to trigger the `debug` container remotely:
 
+Activate the virtualenv first (or run via `venv/bin/python`):
+
 ```bash
+source venv/bin/activate
 python3 examples/example6_remote_debug.py \
   --target-id XNAT_E00001 \
   --message "echo remote from xnat_pipelines" \
@@ -183,6 +186,31 @@ python3 examples/example6_remote_debug.py \
 - Calls `/xapi/wrappers/70/launch` to inspect the launch form metadata.
 - Posts to `/xapi/wrappers/70/root/xnat:imageSessionData/launch` with the provided inputs.
 - Prints the launch response and the most recent container row returned by `/xapi/containers`.
+
+Source overview:
+
+```python
+import requests
+
+def resolve_command(session, base_url, command_name):
+    resp = session.get(f"{base_url}/xapi/commands", params={"format": "json"})
+    resp.raise_for_status()
+    # pick the entry where name/id matches
+
+def launch_container(session, base_url, wrapper_id, root_element, root_param, target_id, inputs):
+    payload = {"context": root_param, root_param: target_id, "inputs": json.dumps(inputs)}
+    for key, value in inputs.items():
+        payload[f"inputs.{key}"] = value if isinstance(value, str) else json.dumps(value)
+    resp = session.post(f"{base_url}/xapi/wrappers/{wrapper_id}/root/{root_element}/launch", data=payload)
+    resp.raise_for_status()
+    return resp.json()
+
+with requests.Session() as sess:
+    sess.auth = (user, password)
+    command = resolve_command(sess, base_url, "debug")
+    # select wrapper 70 (session-level)
+    report = launch_container(sess, base_url, 70, "xnat:imageSessionData", "session", target_session_id, inputs)
+```
 
 Omit `--submit` to preview the launch UI without starting a container.
 
