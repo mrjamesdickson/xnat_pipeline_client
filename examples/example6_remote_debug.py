@@ -126,7 +126,9 @@ def main() -> None:
     parser.add_argument("--output-file", default="remote-example.txt", help="Name for the generated output resource")
     parser.add_argument("--message", default="echo remote example from xnat_pipelines", help="Command to run inside the container")
     parser.add_argument("--submit", action="store_true", help="Submit the container launch instead of previewing only")
-    parser.add_argument("--list-containers", action="store_true", help="List recent containers and exit")
+    parser.add_argument("--list-containers", action="store_true", help="(Alias for --list-installed) List installed container commands and exit")
+    parser.add_argument("--list-installed", action="store_true", help="List installed container commands and exit")
+    parser.add_argument("--list-running", action="store_true", help="List recent container jobs and exit")
     parser.add_argument("--sample-from-id", help="Print sample Executor code for the given container id")
     parser.add_argument("--containers-limit", type=int, default=10, help="How many containers to display when using --list-containers")
     args = parser.parse_args()
@@ -134,7 +136,9 @@ def main() -> None:
     session = requests.Session()
     session.auth = (args.user, args.password)
 
-    if args.list_containers:
+    list_installed = args.list_installed or args.list_containers
+
+    if list_installed:
         try:
             cmd_resp = session.get(f"{args.base_url}/xapi/commands", params={"format": "json"})
             cmd_resp.raise_for_status()
@@ -157,6 +161,56 @@ def main() -> None:
             }
             contexts_display = ", ".join(sorted(contexts)) if contexts else "n/a"
             print(f"  {cmd_id}\t{name}\tcontexts=[{contexts_display}]\timage={image}")
+        if not (args.sample_from_id or args.list_running):
+            return
+
+    if args.list_running:
+        body = {
+            "size": args.containers_limit,
+            "sort": [{"field": "id", "direction": "desc"}],
+        }
+        resp = session.post(f"{args.base_url}/xapi/containers", json=body)
+        resp.raise_for_status()
+
+        command_lookup: Dict[str, str] = {}
+        try:
+            if not list_installed:
+                cmd_resp = session.get(f"{args.base_url}/xapi/commands", params={"format": "json"})
+                cmd_resp.raise_for_status()
+                for cmd_entry in cmd_resp.json():
+                    key = str(cmd_entry.get("id"))
+                    if key:
+                        command_lookup[key] = cmd_entry.get("name") or key
+        except Exception:
+            command_lookup = {}
+
+        containers = resp.json()
+        print("Recent container jobs:")
+        if isinstance(containers, list):
+            for item in containers:
+                cid = item.get("id")
+                command_id = item.get("command-id") or item.get("commandId")
+                name = item.get("command-name") or command_lookup.get(str(command_id), command_id)
+                status = item.get("status")
+                wrapper = item.get("wrapper-id")
+                inputs = item.get("inputs") or []
+                context_param = None
+                context_value = None
+                for entry in inputs:
+                    if entry.get("name") == "context":
+                        context_param = entry.get("value")
+                        break
+                if context_param:
+                    for entry in inputs:
+                        if entry.get("name") == context_param:
+                            context_value = entry.get("value")
+                            break
+                if isinstance(context_value, str) and context_value.startswith("/archive/"):
+                    context_value = context_value.split("/")[-1]
+                context_display = f"{context_param}={context_value}" if context_param else "context=?"
+                print(f"  {cid}\tcommand={name}\tstatus={status}\t{context_display}\twrapper={wrapper}")
+        else:
+            print(containers)
         if not args.sample_from_id:
             return
 

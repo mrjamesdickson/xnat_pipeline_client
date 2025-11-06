@@ -15,5 +15,6 @@ All scripts accept an optional first argument pointing at the parent directory w
 For the Python examples that call the remote XNAT service, activate the repo virtualenv first (e.g. `source venv/bin/activate`) or invoke them via `venv/bin/python`.
 
 `example6_remote_debug.py` also includes helper flags:
-- `--list-containers` (with `--containers-limit`) to show the installed container commands, their available contexts, and image references.
+- `--list-installed` (with `--containers-limit`) to show the installed container commands, their available contexts, and image references.
+- `--list-running` (with `--containers-limit`) to show recent container jobs, including their command name, context target, and status.
 - `--sample-from-id <id>` to print a ready-to-edit Python snippet that relaunches a given container via `Executor`.
