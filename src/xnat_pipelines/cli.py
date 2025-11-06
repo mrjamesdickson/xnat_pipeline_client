@@ -141,10 +141,22 @@ def main():
         with _connect_or_exit(args.url, connect_kwargs) as xn:
             cc = ContainerClient.from_xnat(xn, routes=routes)
             detail = cc.get_container(args.container_id)
+            commands = cc.list_commands()
 
         command_id = detail.get("command-id") or detail.get("commandId")
         command_name = detail.get("command-name") or detail.get("commandName")
         command_ref = command_name or command_id
+        wrapper_id = detail.get("wrapper-id") or detail.get("wrapperId")
+
+        wrapper_contexts: List[str] = []
+        for cmd in commands:
+            if str(command_id) == str(cmd.id) or cmd.name == command_name:
+                wrappers = cmd.raw.get("xnat") or []
+                for wrapper in wrappers:
+                    if str(wrapper.get("id")) == str(wrapper_id):
+                        wrapper_contexts = wrapper.get("contexts") or []
+                        break
+                break
 
         inputs = detail.get("inputs") or []
         context_param = None
@@ -159,9 +171,21 @@ def main():
                     target_value = entry.get("value")
                     break
 
+        if wrapper_contexts and not context_param:
+            first_ctx = wrapper_contexts[0]
+            if isinstance(first_ctx, str) and ":" in first_ctx:
+                context_param = first_ctx.split(":", 1)[1]
+        if isinstance(context_param, str) and ":" in context_param:
+            context_param = context_param.split(":", 1)[1]
+
         level = CONTEXT_TO_LEVEL.get(str(context_param), "experiment")
         if not target_value:
             target_value = "XNAT_E00001"
+
+        wrapper_comment = ""
+        if wrapper_contexts:
+            readable_contexts = ", ".join(wrapper_contexts)
+            wrapper_comment = f"# wrapper contexts: {readable_contexts}"
 
         input_hints = {}
         for entry in inputs:
@@ -196,6 +220,11 @@ def main():
             "from xnat_pipelines.executor import Executor",
             "import xnat",
             "",
+            f"# container id {args.container_id}, command {command_ref}",
+        ]
+        if wrapper_comment:
+            snippet_lines.append(wrapper_comment)
+        snippet_lines.extend([
             f"with xnat.connect({connect_call}) as xn:",
             "    executor = Executor(mode=\"remote\")",
             "    job = executor.run(",
@@ -203,7 +232,7 @@ def main():
             f"        command_ref=\"{command_ref}\",",
             f"        context={{\"level\": \"{level}\", \"id\": \"{target_value}\"}},",
             "        inputs={",
-        ]
+        ])
         snippet_lines.extend(input_lines)
         snippet_lines.extend(
             [
