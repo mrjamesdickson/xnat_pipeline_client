@@ -1,0 +1,10 @@
+[
+  {
+    "level": "experiment",
+    "id": "XNAT_E_MRI_001"
+  },
+  {
+    "level": "experiment",
+    "id": "XNAT_E_MRI_002"
+  }
+]

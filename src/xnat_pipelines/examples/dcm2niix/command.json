@@ -1,0 +1,43 @@
+{
+  "id": "xnat/dcm2niix:latest",
+  "name": "xnat/dcm2niix",
+  "version": "latest",
+  "image": "ghcr.io/xnat/dcm2niix:latest",
+  "description": "Convert DICOM in /input to NIfTI in /output using dcm2niix.",
+  "mounts": {
+    "input": "/input",
+    "output": "/output"
+  },
+  "inputs": [
+    {
+      "name": "compress",
+      "type": "string",
+      "default": "y",
+      "arg": "-z"
+    },
+    {
+      "name": "bids_sidecar",
+      "type": "string",
+      "default": "y",
+      "arg": "-b"
+    },
+    {
+      "name": "filename",
+      "type": "string",
+      "default": "%p_%s",
+      "arg": "-f"
+    },
+    {
+      "name": "merge_nifti",
+      "type": "int",
+      "default": 4,
+      "arg": "-m"
+    },
+    {
+      "name": "text_notes",
+      "type": "string",
+      "default": "",
+      "arg": "-x"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "xnat/debug-command:latest",
+  "name": "xnat/debug-command",
+  "version": "latest",
+  "image": "ghcr.io/xnat/debug-command:latest",
+  "description": "Simple echo/sleep/fail test command.",
+  "mounts": {
+    "input": "/input",
+    "output": "/output"
+  },
+  "inputs": [
+    {
+      "name": "message",
+      "type": "string",
+      "default": "hello",
+      "arg": "--message"
+    },
+    {
+      "name": "sleep",
+      "type": "int",
+      "default": 0,
+      "arg": "--sleep"
+    },
+    {
+      "name": "should_fail",
+      "type": "boolean",
+      "default": false,
+      "env": "SHOULD_FAIL"
+    }
+  ]
+}

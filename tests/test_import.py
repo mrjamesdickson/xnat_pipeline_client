@@ -1,0 +1,1 @@
+import xnat_pipelines; assert xnat_pipelines.__version__ == '0.5.0'\n
