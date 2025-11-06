@@ -135,53 +135,30 @@ def main() -> None:
     session.auth = (args.user, args.password)
 
     if args.list_containers:
-        body = {
-            "size": args.containers_limit,
-            "sort": [{"field": "id", "direction": "desc"}],
-        }
-        resp = session.post(f"{args.base_url}/xapi/containers", json=body)
-        resp.raise_for_status()
-    # Build a lookup of command ids to human-readable names.
-    command_lookup: Dict[str, str] = {}
-    try:
-        cmd_resp = session.get(f"{args.base_url}/xapi/commands", params={"format": "json"})
-        cmd_resp.raise_for_status()
-        for cmd_entry in cmd_resp.json():
-            key = str(cmd_entry.get("id"))
-            if key:
-                command_lookup[key] = cmd_entry.get("name") or key
-    except Exception:
-        command_lookup = {}
+        try:
+            cmd_resp = session.get(f"{args.base_url}/xapi/commands", params={"format": "json"})
+            cmd_resp.raise_for_status()
+            commands = cmd_resp.json()
+        except Exception as exc:  # noqa: BLE001
+            print(f"Failed to fetch command list: {exc}")
+            return
 
-    containers = resp.json()
-    print("Recent containers:")
-    if isinstance(containers, list):
-        for item in containers:
-            cid = item.get("id")
-            command_id = item.get("command-id") or item.get("commandId")
-            name = item.get("command-name") or command_lookup.get(str(command_id), command_id)
-            status = item.get("status")
-            wrapper = item.get("wrapper-id")
-            inputs = item.get("inputs") or []
-            context_param = None
-            context_value = None
-            for entry in inputs:
-                if entry.get("name") == "context":
-                    context_param = entry.get("value")
-                    break
-            if context_param:
-                for entry in inputs:
-                    if entry.get("name") == context_param:
-                        context_value = entry.get("value")
-                        break
-            if isinstance(context_value, str) and context_value.startswith("/archive/"):
-                context_value = context_value.split("/")[-1]
-            context_display = f"{context_param}={context_value}" if context_param else "context=?"
-            print(f"  {cid}\tcommand={name}\tstatus={status}\t{context_display}\twrapper={wrapper}")
-    else:
-        print(containers)
-    if not args.sample_from_id:
-        return
+        print("Installed container commands:")
+        for cmd in commands[: args.containers_limit]:
+            name = cmd.get("name")
+            cmd_id = cmd.get("id")
+            image = cmd.get("image")
+            wrappers = cmd.get("xnat") or []
+            contexts = {
+                ctx
+                for wrapper in wrappers
+                for ctx in wrapper.get("contexts", [])
+                if isinstance(ctx, str)
+            }
+            contexts_display = ", ".join(sorted(contexts)) if contexts else "n/a"
+            print(f"  {cmd_id}\t{name}\tcontexts=[{contexts_display}]\timage={image}")
+        if not args.sample_from_id:
+            return
 
     if args.sample_from_id:
         detail = session.get(f"{args.base_url}/xapi/containers/{args.sample_from_id}")
