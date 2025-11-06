@@ -141,12 +141,25 @@ def main() -> None:
         }
         resp = session.post(f"{args.base_url}/xapi/containers", json=body)
         resp.raise_for_status()
+    # Build a lookup of command ids to human-readable names.
+    command_lookup: Dict[str, str] = {}
+    try:
+        cmd_resp = session.get(f"{args.base_url}/xapi/commands", params={"format": "json"})
+        cmd_resp.raise_for_status()
+        for cmd_entry in cmd_resp.json():
+            key = str(cmd_entry.get("id"))
+            if key:
+                command_lookup[key] = cmd_entry.get("name") or key
+    except Exception:
+        command_lookup = {}
+
     containers = resp.json()
     print("Recent containers:")
     if isinstance(containers, list):
         for item in containers:
             cid = item.get("id")
-            name = item.get("command-name") or item.get("command-id")
+            command_id = item.get("command-id") or item.get("commandId")
+            name = item.get("command-name") or command_lookup.get(str(command_id), command_id)
             status = item.get("status")
             wrapper = item.get("wrapper-id")
             inputs = item.get("inputs") or []

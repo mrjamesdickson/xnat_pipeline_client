@@ -212,7 +212,7 @@ with requests.Session() as sess:
     report = launch_container(sess, base_url, 70, "xnat:imageSessionData", "session", target_session_id, inputs)
 
 # Optional helpers:
-#   python3 examples/example6_remote_debug.py --list-containers  # shows id, command, context, wrapper
+#   python3 examples/example6_remote_debug.py --list-containers  # shows id, command name, context, wrapper
 #   python3 examples/example6_remote_debug.py --sample-from-id <container_id>
 ```
 
