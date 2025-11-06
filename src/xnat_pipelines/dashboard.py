@@ -1,6 +1,8 @@
 from __future__ import annotations
 import argparse, http.server, socketserver, json, pathlib, time, os
 
+from . import __version__ as PKG_VERSION
+
 INDEX_HTML = """<!doctype html>
 <html><head>
 <meta charset='utf-8'/>
@@ -89,7 +91,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=directory, **kwargs)
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(prog="xnat-pipelines-dashboard")
+    ap.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {PKG_VERSION}",
+        help="Show the installed xnat-pipelines version and exit",
+    )
     ap.add_argument("--runs", default="./xnat_local_runs")
     ap.add_argument("--port", type=int, default=8080)
     args = ap.parse_args()

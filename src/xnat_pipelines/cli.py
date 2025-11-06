@@ -1,9 +1,10 @@
 from __future__ import annotations
 import argparse, json, sys
-from typing import List
+from typing import List, Optional
 import xnat
 from xnat import exceptions
 
+from . import __version__ as PKG_VERSION
 from .executor import Executor
 from .containers import ContainerClient
 from .batch import BatchRunner
@@ -17,6 +18,48 @@ CONTEXT_TO_LEVEL = {
     "assessor": "assessor",
     "resource": "resource",
 }
+
+CONTEXT_NAME_ALIASES = {
+    "projectdata": "project",
+    "subjectdata": "subject",
+    "experimentdata": "experiment",
+    "imagesessiondata": "session",
+    "sessiondata": "session",
+    "imagescandata": "scan",
+    "scancontext": "scan",
+    "imageassessordata": "assessor",
+    "assessordata": "assessor",
+    "imageresourcedata": "resource",
+    "resourcecatalog": "resource",
+}
+
+DEFAULT_CONTEXT_IDS = {
+    "project": "XNAT_P00001",
+    "subject": "XNAT_S00001",
+    "experiment": "XNAT_E00001",
+    "scan": "/archive/experiments/XNAT_E00001/scans/1",
+    "assessor": "XNAT_A00001",
+    "resource": "/archive/resources/RESOURCE_LABEL",
+}
+
+
+def _normalize_context_name(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    token = str(value).strip()
+    if ":" in token:
+        token = token.split(":", 1)[1]
+    if token in CONTEXT_TO_LEVEL:
+        return token
+    lowered = token.lower()
+    if lowered in CONTEXT_TO_LEVEL:
+        return lowered
+    normalized = token.replace("-", "").replace("_", "").lower()
+    alias = CONTEXT_NAME_ALIASES.get(normalized)
+    if alias:
+        return alias
+    return token
+
 def _connect_kwargs(args):
     kwargs = {}
     if getattr(args, "user", None):
@@ -39,6 +82,12 @@ def _connect_or_exit(url, kwargs):
 
 def main():
     parser = argparse.ArgumentParser(prog="xnat-pipelines")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {PKG_VERSION}",
+        help="Show the installed xnat-pipelines version and exit",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     ls = sub.add_parser("list-commands", help="List container commands from XNAT")
@@ -159,28 +208,26 @@ def main():
                 break
 
         inputs = detail.get("inputs") or []
-        context_param = None
         target_value = None
+        raw_context_param = None
         for entry in inputs:
             if entry.get("name") == "context":
-                context_param = entry.get("value")
+                raw_context_param = entry.get("value")
                 break
+        context_param = _normalize_context_name(raw_context_param)
         if context_param:
             for entry in inputs:
                 if entry.get("name") == context_param:
                     target_value = entry.get("value")
                     break
 
-        if wrapper_contexts and not context_param:
-            first_ctx = wrapper_contexts[0]
-            if isinstance(first_ctx, str) and ":" in first_ctx:
-                context_param = first_ctx.split(":", 1)[1]
-        if isinstance(context_param, str) and ":" in context_param:
-            context_param = context_param.split(":", 1)[1]
+        if not context_param and wrapper_contexts:
+            first_ctx = next((ctx for ctx in wrapper_contexts if isinstance(ctx, str)), None)
+            context_param = _normalize_context_name(first_ctx)
 
-        level = CONTEXT_TO_LEVEL.get(str(context_param), "experiment")
+        level = CONTEXT_TO_LEVEL.get(context_param, "experiment")
         if not target_value:
-            target_value = "XNAT_E00001"
+            target_value = DEFAULT_CONTEXT_IDS.get(level, "XNAT_E00001")
 
         wrapper_comment = ""
         if wrapper_contexts:
