@@ -215,6 +215,7 @@ with requests.Session() as sess:
 #   python3 examples/example6_remote_debug.py --list-installed   # shows unique container commands installed on the server
 #   python3 examples/example6_remote_debug.py --list-running     # shows recent container jobs (id, command, context, status)
 #   python3 examples/example6_remote_debug.py --sample-from-id <container_id>
+#   xnat-pipelines list-running --url http://demo02.xnatworks.io --user admin --password admin --limit 5
 ```
 
 Omit `--submit` to preview the launch UI without starting a container.

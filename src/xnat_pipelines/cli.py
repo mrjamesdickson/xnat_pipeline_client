@@ -17,6 +17,14 @@ def main():
     ls.add_argument("--token")
     ls.add_argument("--routes", help="JSON of route overrides")
 
+    lrun = sub.add_parser("list-running", help="List recent container jobs from XNAT")
+    lrun.add_argument("--url", required=True)
+    lrun.add_argument("--user")
+    lrun.add_argument("--password")
+    lrun.add_argument("--token")
+    lrun.add_argument("--routes", help="JSON of route overrides")
+    lrun.add_argument("--limit", type=int, default=20, help="Number of recent jobs to fetch")
+
     run = sub.add_parser("run", help="Run a container command (remote/local/auto)")
     run.add_argument("--mode", default="auto", choices=["auto", "remote", "local"])
     run.add_argument("--url")
@@ -66,6 +74,39 @@ def main():
             cc = ContainerClient.from_xnat(xn, routes=routes)
             for c in cc.list_commands():
                 print(f"{c.id}\t{c.name}\t{c.version}\t{c.image}")
+        return
+
+    if args.cmd == "list-running":
+        connect_kwargs = {}
+        if args.user:
+            connect_kwargs["user"] = args.user
+        if args.password:
+            connect_kwargs["password"] = args.password
+        if args.token:
+            connect_kwargs["token"] = args.token
+        with xnat.connect(args.url, **connect_kwargs) as xn:
+            cc = ContainerClient.from_xnat(xn, routes=routes)
+            rows = cc.list_running(size=args.limit)
+            for row in rows:
+                cid = row.get("id")
+                command = row.get("command-name") or row.get("command-id")
+                status = row.get("status")
+                wrapper = row.get("wrapper-id")
+                context_param = None
+                context_value = None
+                for entry in (row.get("inputs") or []):
+                    if entry.get("name") == "context":
+                        context_param = entry.get("value")
+                        break
+                if context_param:
+                    for entry in (row.get("inputs") or []):
+                        if entry.get("name") == context_param:
+                            context_value = entry.get("value")
+                            break
+                if isinstance(context_value, str) and context_value.startswith("/archive/"):
+                    context_value = context_value.split("/")[-1]
+                context_display = f"{context_param}={context_value}" if context_param else "context=?"
+                print(f"{cid}\t{command}\t{status}\t{context_display}\twrapper={wrapper}")
         return
 
     if args.cmd in ("run","batch"):

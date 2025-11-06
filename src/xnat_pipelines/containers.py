@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 DEFAULT_ROUTES = {
     "commands": "/xapi/commands",
     "command_detail": "/xapi/commands/{command_id}",
+    "containers": "/xapi/containers",
+    "containers_running": "/xapi/containers",
 }
 
 @dataclass
@@ -48,3 +50,19 @@ class ContainerClient:
             if c.id == name_or_id or c.name == name_or_id:
                 return c
         raise KeyError(f"Command {name_or_id!r} not found")
+
+    def list_running(self, size: int = 20) -> List[Dict[str, Any]]:
+        payload = {
+            "size": size,
+            "sort": [{"field": "id", "direction": "desc"}],
+        }
+        r = self.sess.post(self.routes["containers_running"], json=payload)
+        r.raise_for_status()
+        data = r.json()
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            items = data.get("items") or data.get("containers") or data.get("ResultSet", {}).get("Result")
+            if isinstance(items, list):
+                return items
+        return []
