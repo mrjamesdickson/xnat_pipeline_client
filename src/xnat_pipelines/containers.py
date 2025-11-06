@@ -7,6 +7,7 @@ DEFAULT_ROUTES = {
     "command_detail": "/xapi/commands/{command_id}",
     "containers": "/xapi/containers",
     "containers_running": "/xapi/containers",
+    "container_detail": "/xapi/containers/{container_id}",
 }
 
 @dataclass
@@ -66,3 +67,9 @@ class ContainerClient:
             if isinstance(items, list):
                 return items
         return []
+
+    def get_container(self, container_id: str) -> Dict[str, Any]:
+        url = self.routes["container_detail"].format(container_id=container_id)
+        r = self.sess.get(url)
+        r.raise_for_status()
+        return r.json()

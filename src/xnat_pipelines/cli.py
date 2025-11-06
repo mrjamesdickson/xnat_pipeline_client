@@ -1,5 +1,6 @@
 from __future__ import annotations
 import argparse, json, sys
+from typing import List
 import xnat
 from xnat import exceptions
 
@@ -7,6 +8,15 @@ from .executor import Executor
 from .containers import ContainerClient
 from .batch import BatchRunner
 
+CONTEXT_TO_LEVEL = {
+    "project": "project",
+    "subject": "subject",
+    "session": "experiment",
+    "experiment": "experiment",
+    "scan": "scan",
+    "assessor": "assessor",
+    "resource": "resource",
+}
 def _connect_kwargs(args):
     kwargs = {}
     if getattr(args, "user", None):
@@ -45,6 +55,14 @@ def main():
     lrun.add_argument("--token")
     lrun.add_argument("--routes", help="JSON of route overrides")
     lrun.add_argument("--limit", type=int, default=20, help="Number of recent jobs to fetch")
+
+    sample = sub.add_parser("sample-from-id", help="Print a Python snippet to rerun a container job by ID")
+    sample.add_argument("container_id")
+    sample.add_argument("--url", required=True)
+    sample.add_argument("--user")
+    sample.add_argument("--password")
+    sample.add_argument("--token")
+    sample.add_argument("--routes", help="JSON of route overrides")
 
     run = sub.add_parser("run", help="Run a container command (remote/local/auto)")
     run.add_argument("--mode", default="auto", choices=["auto", "remote", "local"])
@@ -116,6 +134,87 @@ def main():
                     context_value = context_value.split("/")[-1]
                 context_display = f"{context_param}={context_value}" if context_param else "context=?"
                 print(f"{cid}\t{command}\t{status}\t{context_display}\twrapper={wrapper}")
+        return
+
+    if args.cmd == "sample-from-id":
+        connect_kwargs = _connect_kwargs(args)
+        with _connect_or_exit(args.url, connect_kwargs) as xn:
+            cc = ContainerClient.from_xnat(xn, routes=routes)
+            detail = cc.get_container(args.container_id)
+
+        command_id = detail.get("command-id") or detail.get("commandId")
+        command_name = detail.get("command-name") or detail.get("commandName")
+        command_ref = command_name or command_id
+
+        inputs = detail.get("inputs") or []
+        context_param = None
+        target_value = None
+        for entry in inputs:
+            if entry.get("name") == "context":
+                context_param = entry.get("value")
+                break
+        if context_param:
+            for entry in inputs:
+                if entry.get("name") == context_param:
+                    target_value = entry.get("value")
+                    break
+
+        level = CONTEXT_TO_LEVEL.get(str(context_param), "experiment")
+        if not target_value:
+            target_value = "XNAT_E00001"
+
+        input_hints = {}
+        for entry in inputs:
+            name = entry.get("name")
+            if isinstance(name, str) and name.startswith("inputs."):
+                key = name[len("inputs.") :]
+                input_hints[key] = entry.get("value") or ""
+
+        input_lines: List[str] = []
+        for key, value in input_hints.items():
+            display = value if value else "<fill in>"
+            if isinstance(display, str):
+                display = display.replace('"', '\\"')
+            input_lines.append(f'        "{key}": "{display}"')
+        if not input_lines:
+            input_lines.append('        "command": "echo hello world"')
+
+        connect_args: List[str] = [f'"{args.url}"']
+        if getattr(args, "user", None):
+            connect_args.append(f'user="{args.user}"')
+        else:
+            connect_args.append('user="<user>"')
+        if getattr(args, "password", None):
+            connect_args.append(f'password="{args.password}"')
+        else:
+            connect_args.append('password="<password>"')
+        if getattr(args, "token", None):
+            connect_args.append(f'token="{args.token}"')
+        connect_call = ", ".join(connect_args)
+
+        snippet_lines = [
+            "from xnat_pipelines.executor import Executor",
+            "import xnat",
+            "",
+            f"with xnat.connect({connect_call}) as xn:",
+            "    executor = Executor(mode=\"remote\")",
+            "    job = executor.run(",
+            "        xnat_session=xn,",
+            f"        command_ref=\"{command_ref}\",",
+            f"        context={{\"level\": \"{level}\", \"id\": \"{target_value}\"}},",
+            "        inputs={",
+        ]
+        snippet_lines.extend(input_lines)
+        snippet_lines.extend(
+            [
+                "        },",
+                "    )",
+                "    job.wait()",
+                "    print(job.status)",
+            ]
+        )
+
+        print("\n".join(snippet_lines))
         return
 
     if args.cmd in ("run","batch"):
