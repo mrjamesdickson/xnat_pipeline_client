@@ -122,82 +122,82 @@ def main() -> None:
     parser.add_argument("--password", default="admin")
     parser.add_argument("--command-name", default="debug", help="Container command to use")
     parser.add_argument("--wrapper-id", type=int, default=70, help="Wrapper ID that matches the experiment/session context")
-parser.add_argument("--target-id", default="XNAT_E00001", help="XNAT context identifier (session, scan, etc.)")
-parser.add_argument("--output-file", default="remote-example.txt", help="Name for the generated output resource")
-parser.add_argument("--message", default="echo remote example from xnat_pipelines", help="Command to run inside the container")
-parser.add_argument("--submit", action="store_true", help="Submit the container launch instead of previewing only")
-parser.add_argument("--list-containers", action="store_true", help="List recent containers and exit")
-parser.add_argument("--sample-from-id", help="Print sample Executor code for the given container id")
-parser.add_argument("--containers-limit", type=int, default=10, help="How many containers to display when using --list-containers")
-args = parser.parse_args()
+    parser.add_argument("--target-id", default="XNAT_E00001", help="XNAT context identifier (session, scan, etc.)")
+    parser.add_argument("--output-file", default="remote-example.txt", help="Name for the generated output resource")
+    parser.add_argument("--message", default="echo remote example from xnat_pipelines", help="Command to run inside the container")
+    parser.add_argument("--submit", action="store_true", help="Submit the container launch instead of previewing only")
+    parser.add_argument("--list-containers", action="store_true", help="List recent containers and exit")
+    parser.add_argument("--sample-from-id", help="Print sample Executor code for the given container id")
+    parser.add_argument("--containers-limit", type=int, default=10, help="How many containers to display when using --list-containers")
+    args = parser.parse_args()
 
-session = requests.Session()
-session.auth = (args.user, args.password)
+    session = requests.Session()
+    session.auth = (args.user, args.password)
 
-if args.list_containers:
-    body = {
-        "size": args.containers_limit,
-        "sort": [{"field": "id", "direction": "desc"}],
-    }
-    resp = session.post(f"{args.base_url}/xapi/containers", json=body)
-    resp.raise_for_status()
-    containers = resp.json()
-    print("Recent containers:")
-    if isinstance(containers, list):
-        for item in containers:
-            cid = item.get("id")
-            name = item.get("command-name") or item.get("command-id")
-            status = item.get("status")
-            wrapper = item.get("wrapper-id")
-            print(f"  {cid}\tcommand={name}\tstatus={status}\twrapper={wrapper}")
-    else:
-        print(containers)
-    if not args.sample_from_id:
-        sys.exit(0)
+    if args.list_containers:
+        body = {
+            "size": args.containers_limit,
+            "sort": [{"field": "id", "direction": "desc"}],
+        }
+        resp = session.post(f"{args.base_url}/xapi/containers", json=body)
+        resp.raise_for_status()
+        containers = resp.json()
+        print("Recent containers:")
+        if isinstance(containers, list):
+            for item in containers:
+                cid = item.get("id")
+                name = item.get("command-name") or item.get("command-id")
+                status = item.get("status")
+                wrapper = item.get("wrapper-id")
+                print(f"  {cid}\tcommand={name}\tstatus={status}\twrapper={wrapper}")
+        else:
+            print(containers)
+        if not args.sample_from_id:
+            return
 
-if args.sample_from_id:
-    detail = session.get(f"{args.base_url}/xapi/containers/{args.sample_from_id}")
-    detail.raise_for_status()
-    container = detail.json()
-    command_id = container.get("command-id")
-    command_name = container.get("command-name")
-    inputs = container.get("inputs", [])
-    context_entry = next((inp for inp in inputs if inp.get("name") == "context"), None)
-    target_entry = None
-    if context_entry:
-        param_name = str(context_entry.get("value"))
-        target_entry = next((inp for inp in inputs if inp.get("name") == param_name), None)
-    param_to_level = {
-        "project": "project",
-        "subject": "subject",
-        "session": "experiment",
-        "scan": "scan",
-        "assessor": "assessor",
-        "resource": "resource",
-    }
-    level = "experiment"
-    param = "session"
-    target_value = "XNAT_E00001"
-    if context_entry:
-        param = str(context_entry.get("value"))
-        level = param_to_level.get(param, param)
-    if target_entry and target_entry.get("value"):
-        target_value = str(target_entry["value"])
-    input_hints = {
-        inp["name"][len("inputs.") :]: inp.get("value", "")
-        for inp in inputs
-        if isinstance(inp.get("name"), str) and inp["name"].startswith("inputs.")
-    }
-    print("Sample Python snippet for xnat_pipelines Executor:\n")
-    cmd_ref = command_name or command_id
-    input_lines = ",\n        ".join(
-        f'"{key}": "{value}"' if value else f'"{key}": "<fill in>"'
-        for key, value in input_hints.items()
-    )
-    if not input_lines:
-        input_lines = '"command": "echo hello world"'
-    print(
-        f"""\
+    if args.sample_from_id:
+        detail = session.get(f"{args.base_url}/xapi/containers/{args.sample_from_id}")
+        detail.raise_for_status()
+        container = detail.json()
+        command_id = container.get("command-id")
+        command_name = container.get("command-name")
+        inputs = container.get("inputs", [])
+        context_entry = next((inp for inp in inputs if inp.get("name") == "context"), None)
+        target_entry = None
+        if context_entry:
+            param_name = str(context_entry.get("value"))
+            target_entry = next((inp for inp in inputs if inp.get("name") == param_name), None)
+        param_to_level = {
+            "project": "project",
+            "subject": "subject",
+            "session": "experiment",
+            "scan": "scan",
+            "assessor": "assessor",
+            "resource": "resource",
+        }
+        level = "experiment"
+        param = "session"
+        target_value = "XNAT_E00001"
+        if context_entry:
+            param = str(context_entry.get("value"))
+            level = param_to_level.get(param, param)
+        if target_entry and target_entry.get("value"):
+            target_value = str(target_entry["value"])
+        input_hints = {
+            inp["name"][len("inputs.") :]: inp.get("value", "")
+            for inp in inputs
+            if isinstance(inp.get("name"), str) and inp["name"].startswith("inputs.")
+        }
+        print("Sample Python snippet for xnat_pipelines Executor:\n")
+        cmd_ref = command_name or command_id
+        input_lines = ",\n        ".join(
+            f'"{key}": "{value}"' if value else f'"{key}": "<fill in>"'
+            for key, value in input_hints.items()
+        )
+        if not input_lines:
+            input_lines = '"command": "echo hello world"'
+        print(
+            f"""\
 from xnat_pipelines.executor import Executor
 import xnat
 
@@ -212,14 +212,14 @@ with xnat.connect("{args.base_url}", user="{args.user}", password="{args.passwor
     job.wait()
     print(job.status)
 """
-    )
-    if not args.submit:
-        sys.exit(0)
+        )
+        if not args.submit:
+            return
 
-command = resolve_command(session, args.base_url, args.command_name)
-try:
-    command_id_int = int(command.get("id"))  # type: ignore[arg-type]
-except (TypeError, ValueError):
+    command = resolve_command(session, args.base_url, args.command_name)
+    try:
+        command_id_int = int(command.get("id"))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
         command_id_int = None
 
     wrapper = resolve_wrapper(command, args.wrapper_id)
