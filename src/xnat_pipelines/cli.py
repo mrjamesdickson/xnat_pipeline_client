@@ -1,10 +1,31 @@
 from __future__ import annotations
 import argparse, json, sys
 import xnat
+from xnat import exceptions
 
 from .executor import Executor
 from .containers import ContainerClient
 from .batch import BatchRunner
+
+def _connect_kwargs(args):
+    kwargs = {}
+    if getattr(args, "user", None):
+        kwargs["user"] = args.user
+    if getattr(args, "password", None):
+        kwargs["password"] = args.password
+    if getattr(args, "token", None):
+        kwargs["token"] = args.token
+    return kwargs
+
+
+def _connect_or_exit(url, kwargs):
+    try:
+        return xnat.connect(url, **kwargs)
+    except exceptions.XNATAuthError as exc:
+        print(f"Authentication failed for {url}: {exc}", file=sys.stderr)
+        print("Provide --user/--password or --token.", file=sys.stderr)
+        sys.exit(1)
+
 
 def main():
     parser = argparse.ArgumentParser(prog="xnat-pipelines")
@@ -63,28 +84,16 @@ def main():
     routes = json.loads(args.routes) if args.routes else None
 
     if args.cmd == "list-commands":
-        connect_kwargs = {}
-        if args.user:
-            connect_kwargs["user"] = args.user
-        if args.password:
-            connect_kwargs["password"] = args.password
-        if args.token:
-            connect_kwargs["token"] = args.token
-        with xnat.connect(args.url, **connect_kwargs) as xn:
+        connect_kwargs = _connect_kwargs(args)
+        with _connect_or_exit(args.url, connect_kwargs) as xn:
             cc = ContainerClient.from_xnat(xn, routes=routes)
             for c in cc.list_commands():
                 print(f"{c.id}\t{c.name}\t{c.version}\t{c.image}")
         return
 
     if args.cmd == "list-running":
-        connect_kwargs = {}
-        if args.user:
-            connect_kwargs["user"] = args.user
-        if args.password:
-            connect_kwargs["password"] = args.password
-        if args.token:
-            connect_kwargs["token"] = args.token
-        with xnat.connect(args.url, **connect_kwargs) as xn:
+        connect_kwargs = _connect_kwargs(args)
+        with _connect_or_exit(args.url, connect_kwargs) as xn:
             cc = ContainerClient.from_xnat(xn, routes=routes)
             rows = cc.list_running(size=args.limit)
             for row in rows:
@@ -110,19 +119,13 @@ def main():
         return
 
     if args.cmd in ("run","batch"):
+        connect_kwargs = _connect_kwargs(args)
         xn = None
         if args.mode in ("auto","remote"):
             if not args.url:
                 print("error: --url required for remote/auto modes", file=sys.stderr)
                 sys.exit(2)
-            connect_kwargs = {}
-            if args.user:
-                connect_kwargs["user"] = args.user
-            if args.password:
-                connect_kwargs["password"] = args.password
-            if args.token:
-                connect_kwargs["token"] = args.token
-            xn = xnat.connect(args.url, **connect_kwargs)
+            xn = _connect_or_exit(args.url, connect_kwargs)
 
         exec = Executor(mode=args.mode)
 
