@@ -251,16 +251,13 @@ def main():
             input_lines.append('        "command": "echo hello world"')
 
         connect_args: List[str] = [f'"{args.url}"']
-        if getattr(args, "user", None):
-            connect_args.append(f'user="{args.user}"')
-        else:
-            connect_args.append('user="<user>"')
-        if getattr(args, "password", None):
-            connect_args.append(f'password="{args.password}"')
-        else:
+        connect_args.append(f'user="{getattr(args, "user", "<user>") or "<user>"}"')
+        password_supplied = getattr(args, "password", None) is not None
+        token_supplied = getattr(args, "token", None) is not None
+        if password_supplied or not token_supplied:
             connect_args.append('password="<password>"')
-        if getattr(args, "token", None):
-            connect_args.append(f'token="{args.token}"')
+        if token_supplied:
+            connect_args.append('token="<token>"')
         connect_call = ", ".join(connect_args)
 
         snippet_lines = [
