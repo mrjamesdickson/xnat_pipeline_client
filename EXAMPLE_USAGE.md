@@ -207,6 +207,36 @@ python3 examples/example7_remote_dcm2niix.py \
 - Filters scans that provide a `DICOM` resource to satisfy the scan wrapper’s pre-resolution step (dcm2niix runs at the scan context).
 - Submits each scan to the remote container service using the `Executor(mode="remote")`.
 
+Source overview:
+
+```python
+from dataclasses import dataclass
+import requests
+import xnat
+from xnat_pipelines.executor import Executor
+
+@dataclass
+class ScanTarget:
+    experiment_id: str
+    scan_id: str
+    label: str | None
+    archive_path: str
+
+# ...fetch_scans_with_dicoms(...) gathers all scan archive paths...
+
+with xnat.connect(base_url, user=user, password=password) as xn:
+    executor = Executor(mode="remote")
+    for target in targets:
+        job = executor.run(
+            xnat_session=xn,
+            command_ref="dcm2niix",
+            context={"level": "scan", "id": target.archive_path},
+            inputs={"bids": bids_flag, **extra_options},
+        )
+        job.wait(timeout=600)
+        print(target.experiment_id, target.scan_id, job.status)
+```
+
 Drop `--limit` to process every qualifying scan; pass `--other-options` to forward extra dcm2niix flags.
 
 ---
