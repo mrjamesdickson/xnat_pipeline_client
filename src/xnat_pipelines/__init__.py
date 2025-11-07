@@ -7,7 +7,7 @@ xnat_pipelines v0.5.0
 """
 from .containers import ContainerClient, ContainerCommand
 from .executor import Executor, JobHandle
-from .batch import BatchRunner
+from .batch import BatchRunner, BatchResult, QueueEvent
 
-__all__ = ["ContainerClient", "ContainerCommand", "Executor", "JobHandle", "BatchRunner"]
+__all__ = ["ContainerClient", "ContainerCommand", "Executor", "JobHandle", "BatchRunner", "BatchResult", "QueueEvent"]
 __version__ = "0.6.1"

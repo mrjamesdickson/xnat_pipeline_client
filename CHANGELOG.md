@@ -1,5 +1,10 @@
 # XNAT Pipelines Companion – Changelog
 
+## Unreleased
+- Added `BatchRunner.run_queue` and `QueueEvent` for queue-managed execution with live polling plus duration tracking.
+- `xnat-pipelines batch` now accepts `--queue-mode`, `--poll-interval`, and `--job-timeout` to mirror the new API from the CLI.
+- Introduced Example 8 (local queue) and Example 9 (remote scan queue) showcasing the new workflow.
+
 ## v0.6.1 (Packaging update)
 - Include examples and the JupyterHub monitoring notebook inside the **wheel** and **sdist**.
 - Added `MANIFEST.in` and `include-package-data = true` in `pyproject.toml`.

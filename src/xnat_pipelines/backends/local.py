@@ -49,6 +49,10 @@ class _LocalJob:
         if self.proc and self.proc.poll() is None:
             self.proc.terminate()
 
+    def refresh(self) -> None:
+        if self.proc:
+            self.proc.poll()
+
 class LocalBackend:
     def __init__(self, xnat_session=None, routes: Optional[Dict[str, str]] = None, workdir: Optional[str] = None, engine: str = "docker", io: Optional[Dict[str, Any]] = None, dry_run: bool = False):
         self.xn = xnat_session

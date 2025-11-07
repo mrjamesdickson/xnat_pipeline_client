@@ -276,6 +276,58 @@ Drop `--limit` to process every qualifying scan; pass `--other-options` to forwa
 
 ---
 
+## Example 7b: Queue-Based Batch With Live Polling (Python)
+
+Showcases a producer/consumer queue that keeps a fixed number of jobs in flight while polling each job handle for status updates.
+
+```bash
+source venv/bin/activate
+python3 examples/example8_queue_batch.py \
+  --contexts 8 \
+  --concurrency 3 \
+  --poll-interval 1.5 \
+  --workdir demo_runs/example8 \
+  --message-template "queued {context_id}" \
+  --sleep-sec 2
+```
+
+Key behaviors:
+- Generates contexts on the fly and feeds them from a deque, simulating a queue service.
+- `--concurrency` limits how many jobs run simultaneously; new jobs launch as soon as previous ones finish.
+- Each job handle is polled every `--poll-interval` seconds and logs `[poll]` lines so you can copy/paste the pattern into your own monitoring loop.
+- A final summary reports totals/complete/failed counts, mirroring `BatchRunner.summary`.
+- Want the same behavior from the CLI? Add `--queue-mode --poll-interval 2` to `xnat-pipelines batch ...`.
+
+The script runs in dry-run/local mode by default so you can test without Docker. Add `--execute` to run real containers or `--mode auto --url https://xnat.example.org --token ...` for remote queues.
+
+---
+
+## Example 7c: Remote Scan Queue From Project Inventory
+
+Similar to Example 7, but uses a queue with bounded concurrency and polling. It discovers scans in a project, filters for those with DICOM resources, then keeps `--concurrency` jobs in flight until all scanners finish.
+
+```bash
+source venv/bin/activate
+python3 examples/example9_remote_scan_queue.py \
+  --base-url http://demo02.xnatworks.io \
+  --project Prostate-AEC \
+  --user admin --password admin \
+  --concurrency 3 \
+  --poll-interval 2.0 \
+  --limit 12
+```
+
+Highlights:
+- Reuses the REST discovery from Example 7 to build scan-level contexts automatically.
+- Launches remote jobs via `Executor(mode="remote")` but waits/polls manually, logging `[queue]`, `[poll]`, and `[done]` messages for each scan.
+- Supports token auth (`--token`) and any container command via `--command`/`--other-options`.
+- Provides a final summary (total/complete/failed) once the queue drains.
+- Equivalent CLI flag: `xnat-pipelines batch ... --queue-mode --poll-interval 2 --job-timeout 600`.
+
+Use this as a template when you want explicit control over submission cadence, per-scan logging, or custom monitoring hooks rather than relying solely on `BatchRunner`.
+
+---
+
 ## Example 8: Monitoring with Dashboard
 
 Start the web dashboard to monitor local runs:

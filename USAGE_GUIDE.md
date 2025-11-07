@@ -59,6 +59,31 @@ The printed path contains the dashboard static assets and `xnat_pipelines_monito
   xnat-pipelines-dashboard --version
   ```
 
+## Queue Execution Mode
+- CLI queue processing with live polling:
+  ```bash
+  xnat-pipelines batch \
+    --queue-mode \
+    --contexts '[{"level":"experiment","id":"XNAT_E1"}, {"level":"experiment","id":"XNAT_E2"}]' \
+    --command ghcr.io/xnat/debug-command:latest \
+    --inputs '{"message":"from queue"}' \
+    --concurrency 3 \
+    --poll-interval 1.5
+  ```
+- Python API (throttled queue):
+  ```python
+  from xnat_pipelines.batch import BatchRunner
+  runner = BatchRunner(executor, concurrency=3)
+  results = runner.run_queue(
+      xnat_session=xn,
+      command_ref="dcm2niix",
+      contexts=contexts,
+      inputs={"bids": "y"},
+      poll_interval=2.0,
+  )
+  print(runner.summary(results))
+  ```
+
 ## CLI Examples
 - List available container commands:
   ```bash

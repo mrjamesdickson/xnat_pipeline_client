@@ -17,6 +17,12 @@ class JobHandle:
     def status(self) -> str:
         return self._impl.status()
 
+    def refresh(self) -> "JobHandle":
+        refresh_fn = getattr(self._impl, "refresh", None)
+        if callable(refresh_fn):
+            refresh_fn()
+        return self
+
     def wait(self, timeout: int = 3600, poll: float = 2.0) -> "JobHandle":
         self._impl.wait(timeout=timeout, poll=poll)
         return self

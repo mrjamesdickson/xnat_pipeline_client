@@ -146,6 +146,9 @@ def main():
     batch.add_argument("--workdir", default=None)
     batch.add_argument("--engine", default="docker", choices=["docker","podman"])
     batch.add_argument("--dry-run", action="store_true")
+    batch.add_argument("--queue-mode", action="store_true", help="Process contexts via a managed queue with live polling.")
+    batch.add_argument("--poll-interval", type=float, default=2.0, help="Seconds between queue status polls.")
+    batch.add_argument("--job-timeout", type=int, default=3600, help="Timeout (s) when waiting for queued jobs to finalize.")
 
     args = parser.parse_args()
     routes = json.loads(args.routes) if args.routes else None
@@ -320,18 +323,56 @@ def main():
                 print(job.stdout_tail())
             else:
                 contexts = json.loads(args.contexts)
-                runner = BatchRunner(executor=exec, concurrency=args.concurrency, retry=json.loads(args.retry))
-                results = runner.run_many(
-                    xnat_session=xn,
-                    command_ref=args.command,
-                    contexts=contexts,
-                    inputs=json.loads(args.inputs),
-                    routes=routes,
-                    io=json.loads(args.io),
-                    workdir=args.workdir,
-                    engine=args.engine,
-                    dry_run=args.dry_run,
-                )
+                if not isinstance(contexts, list):
+                    print("error: --contexts must be a JSON list of context dictionaries", file=sys.stderr)
+                    sys.exit(2)
+                retry_cfg = json.loads(args.retry)
+                runner = BatchRunner(executor=exec, concurrency=args.concurrency, retry=retry_cfg)
+                inputs_cfg = json.loads(args.inputs)
+                io_cfg = json.loads(args.io)
+                if args.queue_mode:
+                    total_contexts = len(contexts)
+
+                    def _queue_logger(event):
+                        label = event.context.get("id", "?")
+                        prefix = f"[{event.index}/{total_contexts}]" if total_contexts else f"[{event.index}]"
+                        if event.event == "submitted":
+                            print(f"{prefix} queued {label} (job_id={event.job_id})")
+                        elif event.event == "status":
+                            print(f"[poll] {label} status={event.status}")
+                        elif event.event == "complete":
+                            duration = f" ({event.duration_sec:.1f}s)" if event.duration_sec is not None else ""
+                            extra = f" error={event.error}" if event.error else ""
+                            print(f"{prefix} done {label} -> {event.status}{duration}{extra}")
+                        elif event.event == "error":
+                            print(f"{prefix} error {label}: {event.status}")
+
+                    results = runner.run_queue(
+                        xnat_session=xn,
+                        command_ref=args.command,
+                        contexts=contexts,
+                        inputs=inputs_cfg,
+                        routes=routes,
+                        io=io_cfg,
+                        workdir=args.workdir,
+                        engine=args.engine,
+                        dry_run=args.dry_run,
+                        poll_interval=args.poll_interval,
+                        job_timeout=args.job_timeout,
+                        status_callback=_queue_logger,
+                    )
+                else:
+                    results = runner.run_many(
+                        xnat_session=xn,
+                        command_ref=args.command,
+                        contexts=contexts,
+                        inputs=inputs_cfg,
+                        routes=routes,
+                        io=io_cfg,
+                        workdir=args.workdir,
+                        engine=args.engine,
+                        dry_run=args.dry_run,
+                    )
                 print(runner.summary(results))
                 for r in results:
                     print(f"{r.context} -> {r.status} ({r.backend}) {r.error or ''}")

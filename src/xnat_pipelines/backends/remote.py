@@ -59,6 +59,9 @@ class _RemoteJob:
         r = self.sess.delete(url)
         r.raise_for_status()
 
+    def refresh(self) -> None:
+        self._refresh()
+
 class RemoteBackend:
     def __init__(self, xnat_session, routes: Optional[Dict[str, str]] = None, io: Optional[Dict[str, Any]] = None):
         self.xn = xnat_session
