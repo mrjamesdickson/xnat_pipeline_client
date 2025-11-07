@@ -1,4 +1,4 @@
-# XNAT Pipelines Companion Package v0.6.1
+# XNAT Pipelines Companion Package v1.0.0
 
 This bundle includes everything you need to run, monitor, and manage local or remote XNAT Container Service workflows from Python, the CLI, or JupyterHub.
 
@@ -9,13 +9,13 @@ This bundle includes everything you need to run, monitor, and manage local or re
 - `README.md` – General usage overview
 - `LICENSE` – MIT license
 
-## What's New in v0.6.1
+## What's New in v1.0.0
 | Update | Impact |
 |--------|--------|
-| Packaged examples | The dashboard assets and JupyterHub notebook now ship inside both the wheel and sdist, so `pip install xnat-pipelines` provides the same example files as cloning the repository. |
-| No runtime deltas | CLI, API, and dashboard behavior are unchanged from v0.6.0; the release focuses on packaging parity. |
+| Queue execution mode | `BatchRunner.run_queue` and `xnat-pipelines batch --queue-mode` keep a fixed number of jobs in flight with live status polling and per-job timing. |
+| Expanded examples | New Example 8 (local dry-run queue) and Example 9 (remote scan queue) illustrate the execution pattern end-to-end. |
 
-## Key Features (v0.6.x)
+## Key Features (v1.x)
 | Feature | Description |
 |----------|--------------|
 | Dual-mode execution | Run containers remotely via XNAT or locally via Docker/Podman. |
@@ -127,4 +127,4 @@ Open `xnat_pipelines_monitoring_jupyterhub.ipynb` inside your JupyterHub environ
 ---
 **Author:** XNATWorks  
 **Email:** info@xnatworks.io  
-**Version:** 0.6.1 (2025-11-06)
+**Version:** 1.0.0 (2025-11-06)

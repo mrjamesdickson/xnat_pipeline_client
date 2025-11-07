@@ -1,6 +1,6 @@
 # XNAT Pipelines Companion – Changelog
 
-## Unreleased
+## v1.0.0 (Queue execution)
 - Added `BatchRunner.run_queue` and `QueueEvent` for queue-managed execution with live polling plus duration tracking.
 - `xnat-pipelines batch` now accepts `--queue-mode`, `--poll-interval`, and `--job-timeout` to mirror the new API from the CLI.
 - Introduced Example 8 (local queue) and Example 9 (remote scan queue) showcasing the new workflow.

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xnat_pipelines"
-version = "0.6.1"
+version = "1.0.0"
 description = "XNAT companion: discovery, dual-mode exec, batch, retries, full I/O staging + schema-aware input mapping + HTML dashboard."
 readme = "README.md"
 authors = [{name="XNATWorks", email="info@xnatworks.io"}]

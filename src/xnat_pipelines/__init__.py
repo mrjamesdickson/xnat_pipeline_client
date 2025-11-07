@@ -10,4 +10,4 @@ from .executor import Executor, JobHandle
 from .batch import BatchRunner, BatchResult, QueueEvent
 
 __all__ = ["ContainerClient", "ContainerCommand", "Executor", "JobHandle", "BatchRunner", "BatchResult", "QueueEvent"]
-__version__ = "0.6.1"
+__version__ = "1.0.0"
