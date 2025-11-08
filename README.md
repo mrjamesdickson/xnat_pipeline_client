@@ -21,3 +21,6 @@
 - Exposes a simple `/status.json` endpoint with job states, sizes, and recent log tail.
 
 See `examples/dual_mode_execution_demo.ipynb` (from v0.2.0), `examples/batch_demo.ipynb` (v0.3.0). Dashboard scripts live in `examples/` and `xnat_pipelines.dashboard` entrypoint.
+
+### Authentication tips
+- When you omit `--user/--password` (and `--token`), the CLI now looks for matching machine entries in your `~/.netrc` (or `$NETRC`) so you can keep credentials out of scripts. Populate the stanza with `machine <host> login <user> password <secret>` and the CLI will reuse it automatically.

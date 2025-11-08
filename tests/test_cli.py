@@ -106,3 +106,16 @@ def test_cli_batch_queue_mode_invokes_run_queue(monkeypatch):
     assert invocation["contexts"] == [{"level": "experiment", "id": "E1"}]
     assert invocation["poll_interval"] == 0.1
     assert invocation["job_timeout"] == 30
+
+
+def test_connect_kwargs_uses_netrc(monkeypatch, tmp_path):
+    netrc_path = tmp_path / "netrc"
+    netrc_path.write_text("machine example.org login alice password secret\n")
+    monkeypatch.setenv("NETRC", str(netrc_path))
+
+    args = SimpleNamespace(user=None, password=None, token=None, url="https://example.org/xapi")
+
+    creds = cli._connect_kwargs(args)
+
+    assert creds["user"] == "alice"
+    assert creds["password"] == "secret"

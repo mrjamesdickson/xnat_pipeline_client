@@ -1,6 +1,9 @@
 from __future__ import annotations
 import argparse, json, sys
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from urllib.parse import urlparse
+import netrc
+import os
 import xnat
 from xnat import exceptions
 
@@ -60,6 +63,25 @@ def _normalize_context_name(value: Optional[str]) -> Optional[str]:
         return alias
     return token
 
+def _netrc_credentials(url: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    if not url:
+        return (None, None)
+    hostname = urlparse(url).hostname
+    if not hostname:
+        return (None, None)
+    netrc_path = os.environ.get("NETRC") or os.path.expanduser("~/.netrc")
+    if not os.path.exists(netrc_path):
+        return (None, None)
+    try:
+        auth = netrc.netrc(netrc_path).authenticators(hostname)
+    except (netrc.NetrcParseError, FileNotFoundError):
+        return (None, None)
+    if not auth:
+        return (None, None)
+    login, _, password = auth
+    return (login, password)
+
+
 def _connect_kwargs(args):
     kwargs = {}
     if getattr(args, "user", None):
@@ -68,6 +90,13 @@ def _connect_kwargs(args):
         kwargs["password"] = args.password
     if getattr(args, "token", None):
         kwargs["token"] = args.token
+    if "user" not in kwargs and "token" not in kwargs:
+        url = getattr(args, "url", None)
+        login, password = _netrc_credentials(url)
+        if login:
+            kwargs["user"] = login
+        if password and "password" not in kwargs:
+            kwargs["password"] = password
     return kwargs
 
 

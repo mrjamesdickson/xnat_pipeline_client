@@ -124,6 +124,9 @@ Open `xnat_pipelines_monitoring_jupyterhub.ipynb` inside your JupyterHub environ
 - Customize dashboard templates under `examples/dashboard_static/`.
 - License: MIT (free to modify and redistribute).
 
+## Authentication shortcuts
+- The CLI inspects `~/.netrc` (or the path pointed to by the `NETRC` env var) when `--user/--password/--token` are omitted. Add a stanza such as `machine demo02.xnatworks.io login admin password admin` and every `xnat-pipelines ... --url https://demo02.xnatworks.io` invocation will reuse those credentials automatically.
+
 ---
 **Author:** XNATWorks  
 **Email:** info@xnatworks.io  
