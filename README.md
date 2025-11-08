@@ -1,5 +1,5 @@
 
-# xnat_pipelines (v0.5.0)
+# xnat_pipelines (v1.0.0)
 
 **New in 0.5.0**
 - **Schema-aware input mapping** for local runs: we read the XNAT command JSON (when resolving via XNAT)
