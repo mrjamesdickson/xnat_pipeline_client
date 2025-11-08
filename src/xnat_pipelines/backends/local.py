@@ -18,6 +18,25 @@ class _LocalJob:
     run_dir: pathlib.Path
     artifact_ref: Optional[str] = None
     succeeded: Optional[bool] = None
+    xn: Any = None
+    context: Optional[Dict[str, str]] = None
+    resource_name: Optional[str] = None
+    upload_enabled: bool = False
+    dry_run: bool = False
+    uploaded: bool = False
+
+    def _maybe_upload(self) -> None:
+        if self.uploaded or not self.upload_enabled or self.xn is None:
+            return
+        artifact = upload_outputs_to_xnat(
+            self.xn,
+            self.context or {},
+            self.run_dir,
+            resource_name=self.resource_name or "xnat_pipelines_out",
+        )
+        if artifact:
+            self.artifact_ref = artifact
+        self.uploaded = True
 
     def status(self) -> str:
         if self.proc is None:
@@ -29,6 +48,8 @@ class _LocalJob:
 
     def wait(self, timeout: int = 3600, poll: float = 1.0):
         if self.proc is None:
+            if self.upload_enabled and not self.dry_run:
+                self._maybe_upload()
             return
         try:
             self.proc.wait(timeout=timeout)
@@ -37,6 +58,8 @@ class _LocalJob:
             self.succeeded = False
             raise
         self.succeeded = (self.proc.returncode == 0)
+        if self.succeeded:
+            self._maybe_upload()
 
     def stdout_tail(self, n: int = 2000) -> str:
         try:
@@ -114,6 +137,9 @@ class LocalBackend:
         }
         (run_dir / "run.json").write_text(json.dumps(manifest, indent=2))
 
+        upload_enabled = bool(self.io.get("upload") and self.xn is not None)
+        resource_name = self.io.get("resource_name")
+
         if self.dry_run:
             log_path.write_text("DRY RUN\n" + " ".join(shlex.quote(c) for c in cmd))
             proc = None
@@ -122,4 +148,18 @@ class LocalBackend:
                 lf.write("CMD: " + " ".join(shlex.quote(c) for c in cmd) + "\n\n")
             proc = subprocess.Popen(cmd, stdout=open(log_path, "a"), stderr=subprocess.STDOUT)
 
-        return JobHandle(backend="local", job_id=run_dir.name, _impl=_LocalJob(proc=proc, log_path=log_path, start_time=time.time(), run_dir=run_dir))
+        return JobHandle(
+            backend="local",
+            job_id=run_dir.name,
+            _impl=_LocalJob(
+                proc=proc,
+                log_path=log_path,
+                start_time=time.time(),
+                run_dir=run_dir,
+                xn=self.xn if upload_enabled else None,
+                context=context if upload_enabled else None,
+                resource_name=resource_name if upload_enabled else None,
+                upload_enabled=upload_enabled,
+                dry_run=self.dry_run,
+            ),
+        )

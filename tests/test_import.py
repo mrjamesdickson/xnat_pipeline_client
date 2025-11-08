@@ -1,1 +1,4 @@
-import xnat_pipelines; assert xnat_pipelines.__version__ == '0.5.0'\n
+def test_version_matches_package():
+    import xnat_pipelines
+
+    assert xnat_pipelines.__version__ == "1.0.0"

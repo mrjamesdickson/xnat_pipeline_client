@@ -11,11 +11,20 @@ class JobHandle:
     backend: str
     job_id: str
     _impl: Any
-    artifact_ref: Optional[str] = None
+    _artifact_ref: Optional[str] = None
 
     @property
     def status(self) -> str:
         return self._impl.status()
+
+    @property
+    def artifact_ref(self) -> Optional[str]:
+        impl_ref = getattr(self._impl, "artifact_ref", None)
+        return impl_ref if impl_ref is not None else self._artifact_ref
+
+    @artifact_ref.setter
+    def artifact_ref(self, value: Optional[str]) -> None:
+        self._artifact_ref = value
 
     def refresh(self) -> "JobHandle":
         refresh_fn = getattr(self._impl, "refresh", None)
